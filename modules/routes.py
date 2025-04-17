@@ -2,7 +2,7 @@ from flask import Flask,render_template, redirect, url_for, flash, request, abor
 from werkzeug.security import generate_password_hash,check_password_hash
 from flask_login import login_user, logout_user, current_user, login_required
 from sqlalchemy import desc
-
+from flask import jsonify
 from modules import app,db
 from modules.modals import User_mgmt, Post, Retweet, Timeline, Bookmark
 from modules.forms import Signup, Login, UpdateProfile, createTweet
@@ -374,3 +374,139 @@ def delete_retweeted_tweet(post_id):
 
     flash('Your tweet was deleted!','success')
     return redirect(url_for('dashboard'))
+
+### API
+
+@app.route('/api/create_user', methods=['POST'])
+def create_user():
+    data = request.get_json()
+
+    # Validate required fields
+    required_fields = ['username', 'email', 'password']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'Missing field: {field}'}), 400
+
+    # Check if username or email already exists
+    if User_mgmt.query.filter_by(username=data['username']).first():
+        return jsonify({'error': 'Username already exists'}), 400
+    if User_mgmt.query.filter_by(email=data['email']).first():
+        return jsonify({'error': 'Email already exists'}), 400
+
+    # Hash the password
+    hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256')
+
+    # Create the user
+    x = datetime.datetime.now()
+    creation = str(x.strftime("%B")) + " " + str(x.strftime("%Y"))
+
+    user = User_mgmt(
+        username=data['username'],
+        email=data['email'],
+        password=hashed_password,
+        date=creation,
+        image_file='default.jpg',    # if required
+        bg_file='default-bg.jpg'     # if required
+    )
+
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({'message': 'User created successfully', 'user_id': user.id}), 201
+
+@app.route('/api/purge_all', methods=['POST'])
+@login_required
+def purge_all():
+    # Check if the current user is an admin, add your own admin check here.
+    if not current_user.is_admin:  # Assuming there's an 'is_admin' field in User_mgmt
+        return jsonify({'error': 'Permission denied. Admin access required.'}), 403
+
+    try:
+        # Delete all posts
+        Post.query.delete()
+        Retweet.query.delete()
+        Timeline.query.delete()
+        Bookmark.query.delete()
+
+        # Delete all users (excluding the current admin)
+        User_mgmt.query.filter(User_mgmt.id != current_user.id).delete()
+
+        db.session.commit()
+
+        return jsonify({'message': 'All users and posts have been purged.'}), 200
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+#============================================= API to Create a Tweet ==============================================
+
+@app.route('/api/create_tweet', methods=['POST'])
+@login_required
+def create_tweet():
+    data = request.get_json()
+
+    # Validate required fields
+    if 'tweet' not in data:
+        return jsonify({'error': 'Missing tweet content'}), 400
+
+    tweet_content = data['tweet']
+
+    # Get current time for tweet
+    x = datetime.datetime.now()
+    currentTime = str(x.strftime("%d")) +" "+ str(x.strftime("%B")) +"'"+ str(x.strftime("%y")) + " "+ str(x.strftime("%I")) +":"+ str(x.strftime("%M")) +" "+ str(x.strftime("%p"))
+
+    # Create new tweet
+    try:
+        post = Post(tweet=tweet_content, stamp=currentTime, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+
+        # Add tweet to user's timeline
+        to_timeline = Timeline(post_id=post.id)
+        db.session.add(to_timeline)
+        db.session.commit()
+
+        return jsonify({'message': 'Tweet created successfully', 'tweet_id': post.id}), 201
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Missing username or password'}), 400
+
+    user = User_mgmt.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password, password):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    login_user(user)
+    return jsonify({'message': 'Login successful'}), 200
+
+
+@app.route('/api/get_new_tweets/<int:last_id>', methods=['GET'])
+def get_new_tweets(last_id):
+    # Fetch the latest post after the last tweet ID
+    latest_post = Post.query.filter(Post.id > last_id).order_by(Post.id.asc()).first()  # Fetch the next post
+
+    # If a new post exists, return it
+    if latest_post:
+        return jsonify([{
+            'id': latest_post.id,
+            'tweet': latest_post.tweet,
+            'author': latest_post.author.username,
+            'timestamp': latest_post.stamp if isinstance(latest_post.stamp, str) else latest_post.stamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'post_img': latest_post.post_img if latest_post.post_img else None
+        }])
+    else:
+        # If no new posts are available, return an empty list
+        return jsonify([])
