@@ -29,16 +29,18 @@
             </ul>
         </div>
         <div class="posts">
+            <!-- Tweet feed container -->
+            <div id="tweet-feed">
+                {% for tweet in tweets %}
+                    {% include 'partials/tweet.html' %}
+                {% endfor %}
+            </div>
+
             {% block pageContent %}
             {% endblock %}
         </div>
         <div class="info">
             <div class="notice">
-                <h2 class="header">Hey there!</h1>
-                <p class="meta">It's good to see you back! Before you start tweeting, make sure to keep the following point in mind.</p>
-                <p>Let's not spread any hate. Please ensure that there are not any tweets which may hurt the sentiments of a person or a community. Else, we would be forced to take down your tweet.</p>
-                <p>That being said, don't hold back. Twitter was made to allow propogation of free speech. So start tweeting away!</p>
-                <br>
                 {% with messages = get_flashed_messages() %}
                     {% if messages %}
                             {% for message in messages %}
@@ -51,6 +53,7 @@
     </div>
 
 
+
     <script language="javascript" type="text/javascript">
         function chngimg() {
             var img = document.getElementById('imgplus').src;
@@ -60,11 +63,11 @@
              else {
                document.getElementById('imgplus').src = "{{ url_for('static', filename='Images/SVG/bookmark.svg') }}";
            }
-    
+
         }
         // Get the modal
         var modal = document.getElementById('id01');
-        
+
         // When the user clicks anywhere outside of the modal, close it
         window.onclick = function(event) {
           if (event.target == modal) {

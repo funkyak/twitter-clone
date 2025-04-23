@@ -84,9 +84,9 @@
                         </div>
                     </div>
                     <p style="margin-top: 5px;">{{ row.from_retweet.retweet_text }}</p>
-        
+
                     <div class="retweet_post">
-        
+
                         {% if row.from_retweet.ori_post %}
                             <div class="userTweet">
                                 <div class="meta_tweet">
@@ -122,7 +122,7 @@
                             <p style='font-style:italic; opacity:0.5'>This tweet was deleted by it's original author</p>
                         {% endif %}
                     </div>
-        
+
                 </div>
                 <a href="{{ url_for('save_post',post_id=row.from_retweet.id) }}">
                     <img src="{{ url_for('static', filename='Images/SVG/bookmark.svg') }}" id="imgplus" onclick="chngimg()" class="filter_white" alt="">
@@ -133,9 +133,9 @@
                 <a href="{{ url_for('delete_retweet',post_id=row.from_retweet.id) }}">
                     <img src="{{ url_for('static', filename='Images/SVG/delete.svg') }}" class="filter_white" alt="">
                 </a>
-        
+
                 <br>
-        
+
             </div>
 
         {% endif %}

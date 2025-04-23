@@ -7,14 +7,8 @@ from modules import app,db
 from modules.modals import User_mgmt, Post, Retweet, Timeline, Bookmark
 from modules.forms import Signup, Login, UpdateProfile, createTweet
 from modules.functions import save_bg_picture, save_profile_picture, delete_old_images, save_tweet_picture
-
+from datetime import datetime
 import datetime
-
-
-
-
-
-
 
 #===================================================================================================================
 #===================================================================================================================
@@ -36,7 +30,7 @@ def home():
 
         hashed_password = generate_password_hash(form_sign.password.data, method='pbkdf2:sha256')
         x = datetime.datetime.now()
-        creation = str(x.strftime("%B")) +" "+ str(x.strftime("%Y")) 
+        creation = str(x.strftime("%B")) +" "+ str(x.strftime("%Y"))
         new_user = User_mgmt(username=form_sign.username.data, email=form_sign.email.data, password=hashed_password, date=creation)
         db.session.add(new_user)
         db.session.commit()
@@ -61,19 +55,11 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-
-
-
-
-
-
 #===================================================================================================================
 #===================================================================================================================
 #============================================ ACCOUNTS PAGE ========================================================
 #===================================================================================================================
 #===================================================================================================================
-
-
 
 @app.route('/account')
 @login_required
@@ -92,7 +78,6 @@ def account():
         .order_by(desc(Retweet.id))
 
     return render_template('account.html',profile=profile_pic,background=bg_pic,update=update,timeline=all_posts, retweets=retweets)
-
 
 
 @app.route('/UpdateInfo',methods=['GET','POST'])
@@ -164,19 +149,11 @@ def delete_account(account_id):
     db.session.commit()
     return redirect(url_for('home'))
 
-
-
-
-
-
-
 #===================================================================================================================
 #===================================================================================================================
 #============================================ DASHBOARD PAGE =======================================================
 #===================================================================================================================
 #===================================================================================================================
-
-
 
 @app.route('/dashboard',methods=['GET','POST'])
 @login_required
@@ -185,7 +162,7 @@ def dashboard():
     if user_tweet.validate_on_submit():
 
         x = datetime.datetime.now()
-        currentTime = str(x.strftime("%d")) +" "+ str(x.strftime("%B")) +"'"+ str(x.strftime("%y")) + " "+ str(x.strftime("%I")) +":"+ str(x.strftime("%M")) +" "+ str(x.strftime("%p"))
+        currentTime = str(x.strftime("%d")) +" "+ str(x.strftime("%B")) +" "+ str(x.strftime("%y")) + " "+ str(x.strftime("%I")) +":"+ str(x.strftime("%M")) +" "+ str(x.strftime("%p"))
 
         if user_tweet.tweet_img.data:
             tweet_img = save_tweet_picture(user_tweet.tweet_img.data)
@@ -208,8 +185,6 @@ def dashboard():
         .order_by(desc(Timeline.id))\
         .paginate(page=page,per_page=5)
     return render_template('dashboard.html',name = current_user.username,tweet = user_tweet, timeline=timeline)
-
-
 
 @app.route('/view_profile/<int:account_id>',methods=['GET','POST'])
 @login_required
@@ -265,12 +240,6 @@ def bookmarks():
     return render_template('bookmarks.html',posts=posts, empty=empty)
 
 
-
-
-
-
-
-
 #===================================================================================================================
 #===================================================================================================================
 #============================================ TWEET ACTION =========================================================
@@ -289,7 +258,7 @@ def retweet(post_id):
     if new_tweet.validate_on_submit():
 
         x = datetime.datetime.now()
-        currentTime = str(x.strftime("%d")) +" "+ str(x.strftime("%B")) +"'"+ str(x.strftime("%y")) + " "+ str(x.strftime("%I")) +":"+ str(x.strftime("%M")) +" "+ str(x.strftime("%p"))
+        currentTime = str(x.strftime("%d")) +" "+ str(x.strftime("%B")) +" "+ str(x.strftime("%y")) + " "+ str(x.strftime("%I")) +":"+ str(x.strftime("%M")) +" "+ str(x.strftime("%p"))
 
         retweet = Retweet(tweet_id=post.id,user_id=current_user.id,retweet_stamp=currentTime,retweet_text=new_tweet.tweet.data)
         db.session.add(retweet)
@@ -413,32 +382,6 @@ def create_user():
     db.session.commit()
 
     return jsonify({'message': 'User created successfully', 'user_id': user.id}), 201
-
-@app.route('/api/purge_all', methods=['POST'])
-@login_required
-def purge_all():
-    # Check if the current user is an admin, add your own admin check here.
-    if not current_user.is_admin:  # Assuming there's an 'is_admin' field in User_mgmt
-        return jsonify({'error': 'Permission denied. Admin access required.'}), 403
-
-    try:
-        # Delete all posts
-        Post.query.delete()
-        Retweet.query.delete()
-        Timeline.query.delete()
-        Bookmark.query.delete()
-
-        # Delete all users (excluding the current admin)
-        User_mgmt.query.filter(User_mgmt.id != current_user.id).delete()
-
-        db.session.commit()
-
-        return jsonify({'message': 'All users and posts have been purged.'}), 200
-
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
 
 #============================================= API to Create a Tweet ==============================================
 
